@@ -27,9 +27,7 @@ api_endpoint = "api/v1"
 CORS(app)
 
 api = Api(app)
-class TestGet(Resource):
-    def get(self):
-        return {"message": "working"}
+
 ## Application User
 class AppUserRoute(Resource):
 
@@ -258,7 +256,6 @@ class AppointmentRoute(Resource):
         else:
             return {"message": "Something went wrong"}
 
-api.add_resource(TestGet, f"/{api_endpoint}/test")
 api.add_resource(AppUserRoute, f"/{api_endpoint}/user")
 api.add_resource(ClientRoute, f"/{api_endpoint}/client")
 api.add_resource(NotesRoute, f"/{api_endpoint}/note")
@@ -268,4 +265,4 @@ api.add_resource(AppointmentRoute, f"/{api_endpoint}/appointment")
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
