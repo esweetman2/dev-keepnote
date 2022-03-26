@@ -7,25 +7,41 @@ from flask_restful import Resource, Api, marshal_with, abort
 from Resources.resources import *
 from flask_cors import CORS
 from Models.models import *
-import uuid
+from dotenv import load_dotenv
+import os
 
-# app = Flask(__name__)
+
+load_dotenv()
+DB_USERNAME = os.getenv("DB_USERNAME")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_SERVER = os.getenv("DB_SERVER")
+DB_PORT = os.getenv("DB_PORT")
+DB_DATABASE = os.getenv("DB_DATABASE")
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DB_USERNAME}:{DB_PASSWORD}@{DB_SERVER}:{DB_PORT}/{DB_DATABASE}"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
 
 api_endpoint = "api/v1"
 CORS(app)
 
 api = Api(app)
-
+class TestGet(Resource):
+    def get(self):
+        return {"message": "working"}
 ## Application User
 class AppUserRoute(Resource):
 
     @marshal_with(resource_fields)
     def get(self):
-
-        data = request.get_json()
-        user = Users.query.filter_by(user_uuid=data['uuid']).first()
-        if user:
-            return user
+        if request.headers['Content-Type'] == "application/json":
+            data = request.get_json()
+            user = Users.query.filter_by(user_uuid=data['uuid']).first()
+            if user:
+                return user
+            else:
+                abort(400)
         else:
             abort(400)
 
@@ -71,6 +87,8 @@ class ClientRoute(Resource):
             uuid = data['uuid']
             clients = Clients.query.filter_by(user_uuid=uuid).all()
             return clients
+        else:
+            abort(400)
 
 
     def post(self):
@@ -105,6 +123,8 @@ class NotesRoute(Resource):
             uuid = data['uuid']
             notes = ClientNotes.query.filter_by(user_uuid=uuid).all()
             return notes
+        else:
+            abort(400)
 
     def post(self):
         if request.headers['Content-Type'] == "application/json":
@@ -130,11 +150,14 @@ class ProductRoute(Resource):
 
     @marshal_with(get_products_resource_fields)
     def get(self):
+        if request.headers['Content-Type'] == "application/json":
         # print(uuid)
-        data = request.get_json()
-        uuid = data['uuid']
-        products = Products.query.filter_by(user_uuid = uuid).all()
-        return products
+            data = request.get_json()
+            uuid = data['uuid']
+            products = Products.query.filter_by(user_uuid = uuid).all()
+            return products
+        else:
+            abort(400)
 
     def post(self):
         if request.headers['Content-Type'] == "application/json":
@@ -188,6 +211,8 @@ class AppointmentRoute(Resource):
             uuid = data['uuid']
             appointments = Appointments.query.filter_by(user_uuid=uuid).all()
             return appointments
+        else:
+            abort(400)
     
     
     def post(self):
@@ -233,7 +258,7 @@ class AppointmentRoute(Resource):
         else:
             return {"message": "Something went wrong"}
 
-
+api.add_resource(TestGet, f"/{api_endpoint}/test")
 api.add_resource(AppUserRoute, f"/{api_endpoint}/user")
 api.add_resource(ClientRoute, f"/{api_endpoint}/client")
 api.add_resource(NotesRoute, f"/{api_endpoint}/note")
