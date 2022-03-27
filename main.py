@@ -62,7 +62,7 @@ class AppUserRoute(Resource):
             # print(data["uuid"])
             try:
                 new_user = Users(
-                    uuid = data["uuid"],
+                    user_uuid = data["uuid"],
                     first_name = data["first_name"], 
                     last_name=data["last_name"], 
                     email = data["email"]
