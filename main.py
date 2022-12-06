@@ -1,11 +1,9 @@
-# from ast import Delete
-# from cmath import e
-# from logging import NOTSET
 from flask import Flask, request
-from flask_restful import Resource, Api, marshal_with, abort
+from flask_restful import Resource, Api, marshal_with, abort, reqparse
 # from flask_marshmallow import Marshmallow 
 from Resources.resources import *
 from flask_cors import CORS
+from src.Services.loginService import *
 from Models.models import *
 from dotenv import load_dotenv
 import os
@@ -30,18 +28,26 @@ api = Api(app)
 
 ## Application User
 class AppUserRoute(Resource):
-
     @marshal_with(resource_fields)
     def get(self):
-        if request.headers['Content-Type'] == "application/json":
-            data = request.get_json()
-            user = Users.query.filter_by(user_uuid=data['uuid']).first()
-            if user:
-                return user
-            else:
-                abort(400)
+        if request.headers["Authorization"]:
+            access_key = request.headers["Authorization"]
+            # print(access_key)
+            decoded = verifyUser(access_key)
+            if type(decoded) is dict:
+                # decoded['uid']
+                user = Users.query.filter_by(user_uuid=decoded['uid']).first()
+                if user:
+                    return user
+                else:
+                    
+                    return abort(400)
+            elif type(decoded) is str:
+
+                # return json.loads(decoded)
+                return abort(400, error="BAD REQUEST")
         else:
-            abort(400)
+            return abort(400)
 
     @marshal_with(resource_fields)
     def put(self):
@@ -57,56 +63,128 @@ class AppUserRoute(Resource):
         return "user"
 
     def post(self):
-        if request.headers['Content-Type'] == "application/json":
+        if request.headers['Content-Type'] == "application/json" and request.headers['authorization']:
             data = request.get_json()
-            # print(data["uuid"])
             try:
-                new_user = Users(
-                    user_uuid = data["uuid"],
-                    first_name = data["first_name"], 
-                    last_name=data["last_name"], 
-                    email = data["email"]
-                    )
-                db.session.add(new_user)
-                db.session.commit()
-                return {"message": "User added!"}
+                email = data['email']
+                uid = data['uid']
             except:
-                return {"message": "ERROR"}
-        else:
-            return {"message": "Something went wrong"}
+                return abort(404)
+            access_key = request.headers['authorization']
+
+            decoded = verifyUser(access_key)
+            if type(decoded) is dict:
+                # print(decoded)
+                decoded_uid = decoded['user_id']
+                decoded_email = email
+                if decoded_uid == uid and email == decoded_email:
+                    try:
+                        new_user = Users(
+                            user_uuid = decoded['uid'],
+                            email = email
+                            )
+                        db.session.add(new_user)
+                        db.session.commit()
+                        return {"message": "User added!"}
+                    except:
+                        return {"message": "ERROR"}
+                else:    
+                    return abort(400, error="Wrong User")
+            else:
+                return abort(400, error="BAD REQUEST")
+        else: 
+            return abort(400, error="BAD REQUEST")
+
+
 
 ## Adding a Client
-class ClientRoute(Resource):
+class ClientsRoute(Resource):
     @marshal_with(get_clients_resource_fields)
     def get(self):
-        if request.headers['Content-Type'] == "application/json":
-            data = request.get_json()
+        if request.headers['Content-Type'] == "application/json" and request.headers["authorization"]:
+            # data = request.get_json()
             # print(data)
-            uuid = data['uuid']
-            clients = Clients.query.filter_by(user_uuid=uuid).all()
-            return clients
+            decoded_token = verifyUser(request.headers["Authorization"])
+            # print(decoded_token)
+            # and decoded_token['user_id'] == data['uuid']
+            if type(decoded_token) is dict:
+                # print(decoded_token)
+                uuid = decoded_token['user_id']
+                clients = Clients.query.filter_by(user_uuid=uuid).all()
+                # print(clients)
+                return clients
+            elif type(decoded_token) is str:
+                print("HERE",json.loads(decoded_token))
+                return abort(400, error=json.loads(decoded_token))
+            else:
+                return abort(400, error="BAD REQUEST")
         else:
             abort(400)
+    
 
 
+    @marshal_with(get_clients_resource_fields)
     def post(self):
-        if request.headers['Content-Type'] == "application/json":
+        if request.headers['Content-Type'] == "application/json" and request.headers["Authorization"]:
             data = request.get_json()
             # print(data)
-            # try:
-            new_client = Clients(
-                user_uuid = data["uuid"],
-                client_name = data["client_name"], 
-                client_phone=data["client_phone"], 
-                client_address = data["client_address"]
-                )
-            db.session.add(new_client)
-            db.session.commit()
-                # return {"message": "Client added!"}
-            # except:
-            return {"message": "ERROR"}
+            decoded_token = verifyUser(request.headers["Authorization"])
+            if type(decoded_token) is dict and data['client_name'] and decoded_token['user_id'] == data['uid']:
+                # print(decoded_token)
+                try:
+                    new_client = Clients(
+                        user_uuid = decoded_token['uid'],
+                        client_name = data["client_name"], 
+                        )
+                    db.session.add(new_client)
+                    db.session.commit()
+                    return new_client
+                    # return {
+                    #     "success": True,
+                    #     "message":f"Client added {new_client.client_name}"
+                    #     }
+                except Exception as e:
+                    print(e)
+                    return f"error: Counldn't add to DB"
+            elif type(decoded_token) is str:
+                return abort(400, decoded_token) 
+            else:
+                return abort(400, error="BAD REQUEST no news")
         else:
-            return {"message": "Something went wrong"}
+            return abort(400, error="BAD REQUEST") 
+
+
+### INDIVIDUAL CLIENT ####
+# client_put_args = reqparse.RequestParser()
+# client_put_args.add_argument("id", type=int, help="Need an ID")
+
+class Client(Resource):
+    @marshal_with(get_clients_resource_fields)
+    def put(self, id):
+        # client_put_args = reqparse.RequestParser()
+        # client_put_args.add_argument("id", type=int, help="Need an ID") 
+        if request.headers['Content-Type'] == "application/json" and request.headers["Authorization"]:
+            # print(id)
+            client = Clients.query.filter_by(user_uuid="N4PrZxJ2NoN2TYiGLXBad98lsuH2", id=id).first()
+            # print(client.id)
+            client.client_name = "Updated Client"
+            db.session.commit()
+            return client
+            # data = request.get_json()
+            # args = client_put_args.parse_args()
+            # print(args)
+            # decoded_token = verifyUser(request.headers["Authorization"])
+            # if type(decoded_token) is dict and data['client_name'] and decoded_token['user_id'] == data['user_uuid']:
+            #     print(decoded_token)
+            # elif type(decoded_token) is str:
+            #     return abort(400, error="BAD REQUEST") 
+            # else:
+            #     return abort(400, error="BAD REQUEST no news")
+
+        else:
+            print("abort")
+            return abort(400)
+
     
 
 
@@ -257,12 +335,22 @@ class AppointmentRoute(Resource):
             return {"message": "Something went wrong"}
 
 api.add_resource(AppUserRoute, f"/{api_endpoint}/user")
-api.add_resource(ClientRoute, f"/{api_endpoint}/client")
+
+api.add_resource(ClientsRoute, f"/{api_endpoint}/clients")
+api.add_resource(Client, f"/{api_endpoint}/client/<int:id>")
+
 api.add_resource(NotesRoute, f"/{api_endpoint}/note")
+
 api.add_resource(ProductRoute, f"/{api_endpoint}/product")
+
 api.add_resource(AppointmentRoute, f"/{api_endpoint}/appointment")
+
+# api.add_resource(SignInUser, f"/{api_endpoint}/login")
+# api.add_resource(CreateUser, f"/{api_endpoint}/register")
 
 
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True, host="192.168.1.165", port="5000")
+    # app.run(ssl_context='adhoc', debug=True, host="192.168.1.165", port="5000")
+    # app.run(host="192.168.1.165", port="19000", debug=True)

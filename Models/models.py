@@ -11,8 +11,8 @@ db = SQLAlchemy()
 class Users(db.Model):
     __tablename__= 'users'
     user_uuid = db.Column(db.String(255), primary_key=True, nullable=False, unique=True)
-    first_name = db.Column(db.String(255), nullable=False)
-    last_name = db.Column(db.String(255), nullable=False)
+    first_name = db.Column(db.String(255), nullable=True)
+    last_name = db.Column(db.String(255), nullable=True)
     email = db.Column(db.String(255), nullable=False)
     register_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     is_paid = db.Column(db.Boolean, default=False, nullable=False)
