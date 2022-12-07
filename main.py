@@ -1,6 +1,6 @@
 from flask import Flask, request
 from flask_restful import Resource, Api, marshal_with, abort, reqparse
-# from flask_marshmallow import Marshmallow 
+# from flask_marshmallow import Marshmallow
 from Resources.resources import *
 from flask_cors import CORS
 from src.Services.loginService import *
@@ -26,7 +26,9 @@ CORS(app)
 
 api = Api(app)
 
-## Application User
+# Application User
+
+
 class AppUserRoute(Resource):
     @marshal_with(resource_fields)
     def get(self):
@@ -40,7 +42,7 @@ class AppUserRoute(Resource):
                 if user:
                     return user
                 else:
-                    
+
                     return abort(400)
             elif type(decoded) is str:
 
@@ -80,24 +82,23 @@ class AppUserRoute(Resource):
                 if decoded_uid == uid and email == decoded_email:
                     try:
                         new_user = Users(
-                            user_uuid = decoded['uid'],
-                            email = email
-                            )
+                            user_uuid=decoded['uid'],
+                            email=email
+                        )
                         db.session.add(new_user)
                         db.session.commit()
                         return {"message": "User added!"}
                     except:
                         return {"message": "ERROR"}
-                else:    
+                else:
                     return abort(400, error="Wrong User")
             else:
                 return abort(400, error="BAD REQUEST")
-        else: 
+        else:
             return abort(400, error="BAD REQUEST")
 
 
-
-## Adding a Client
+# Adding a Client
 class ClientsRoute(Resource):
     @marshal_with(get_clients_resource_fields)
     def get(self):
@@ -114,14 +115,12 @@ class ClientsRoute(Resource):
                 # print(clients)
                 return clients
             elif type(decoded_token) is str:
-                print("HERE",json.loads(decoded_token))
+                print("HERE", json.loads(decoded_token))
                 return abort(400, error=json.loads(decoded_token))
             else:
                 return abort(400, error="BAD REQUEST")
         else:
             abort(400)
-    
-
 
     @marshal_with(get_clients_resource_fields)
     def post(self):
@@ -133,9 +132,9 @@ class ClientsRoute(Resource):
                 # print(decoded_token)
                 try:
                     new_client = Clients(
-                        user_uuid = decoded_token['uid'],
-                        client_name = data["client_name"], 
-                        )
+                        user_uuid=decoded_token['uid'],
+                        client_name=data["client_name"],
+                    )
                     db.session.add(new_client)
                     db.session.commit()
                     return new_client
@@ -147,11 +146,11 @@ class ClientsRoute(Resource):
                     print(e)
                     return f"error: Counldn't add to DB"
             elif type(decoded_token) is str:
-                return abort(400, decoded_token) 
+                return abort(400, decoded_token)
             else:
                 return abort(400, error="BAD REQUEST no news")
         else:
-            return abort(400, error="BAD REQUEST") 
+            return abort(400, error="BAD REQUEST")
 
 
 ### INDIVIDUAL CLIENT ####
@@ -161,35 +160,63 @@ class ClientsRoute(Resource):
 class Client(Resource):
     @marshal_with(get_clients_resource_fields)
     def put(self, id):
-        # client_put_args = reqparse.RequestParser()
-        # client_put_args.add_argument("id", type=int, help="Need an ID") 
-        if request.headers['Content-Type'] == "application/json" and request.headers["Authorization"]:
-            # print(id)
-            client = Clients.query.filter_by(user_uuid="N4PrZxJ2NoN2TYiGLXBad98lsuH2", id=id).first()
-            # print(client.id)
-            client.client_name = "Updated Client"
-            db.session.commit()
-            return client
-            # data = request.get_json()
-            # args = client_put_args.parse_args()
-            # print(args)
-            # decoded_token = verifyUser(request.headers["Authorization"])
-            # if type(decoded_token) is dict and data['client_name'] and decoded_token['user_id'] == data['user_uuid']:
-            #     print(decoded_token)
-            # elif type(decoded_token) is str:
-            #     return abort(400, error="BAD REQUEST") 
-            # else:
-            #     return abort(400, error="BAD REQUEST no news")
 
+        if request.headers['Content-Type'] == "application/json" and request.headers["Authorization"]:
+            data = request.get_json()
+            decoded_token = verifyUser(request.headers["Authorization"])
+            # print(decoded_token)
+
+            if type(decoded_token) is dict and data['update_name'] and decoded_token['user_id'] == data['uid']:
+                
+                try:
+                    updated_client = Clients.query.filter_by(user_uuid=data['uid'], id=id).first()
+                    updated_client.client_name = data['update_name']
+                    db.session.commit()
+                    return updated_client
+                except Exception as e:
+                    # print(e)
+                    return f"error: Counldn't add to DB"
+
+            elif type(decoded_token) is str:
+                return abort(400, error=decoded_token)
+
+            else:
+                return abort(400, error="BAD REQUEST no news")
         else:
-            print("abort")
+            # print("abort")
             return abort(400)
 
-    
+
+    def delete(self, id):
+        print(id)
+        if request.headers['Content-Type'] == "application/json" and request.headers["Authorization"]:
+            data = request.get_json()
+            decoded_token = verifyUser(request.headers["Authorization"])
+            # print(decoded_token)
+
+            if type(decoded_token) is dict and decoded_token['user_id'] == data['uid']:
+                
+                try:
+                    updated_client = Clients.query.filter_by(user_uuid=data['uid'], id=id)
+                    updated_client.delete()
+                    db.session.commit()
+                except Exception as e:
+                    print(e)
+                    return f"error: Counldn't Delete"
+
+            elif type(decoded_token) is str:
+                return abort(400, error=decoded_token)
+
+            else:
+                return abort(400, error="BAD REQUEST no news")
+        else:
+            # print("abort")
+            return abort(400)
+
+        return {"message": "Deleted"}
 
 
-
-## Notes Route
+# Notes Route
 class NotesRoute(Resource):
     @marshal_with(get_notes_resource_fields)
     def get(self):
@@ -208,10 +235,10 @@ class NotesRoute(Resource):
             # print(data)
             try:
                 new_note = ClientNotes(
-                    user_uuid = data["uuid"], 
-                    client_id = data["client_id"], 
-                    notes = data["notes"]
-                    )
+                    user_uuid=data["uuid"],
+                    client_id=data["client_id"],
+                    notes=data["notes"]
+                )
                 db.session.add(new_note)
                 db.session.commit()
                 return {"message": "Note added!"}
@@ -221,16 +248,16 @@ class NotesRoute(Resource):
             return {"message": "Something went wrong"}
 
 
-## Adding a product
+# Adding a product
 class ProductRoute(Resource):
 
     @marshal_with(get_products_resource_fields)
     def get(self):
         if request.headers['Content-Type'] == "application/json":
-        # print(uuid)
+            # print(uuid)
             data = request.get_json()
             uuid = data['uuid']
-            products = Products.query.filter_by(user_uuid = uuid).all()
+            products = Products.query.filter_by(user_uuid=uuid).all()
             return products
         else:
             abort(400)
@@ -241,10 +268,10 @@ class ProductRoute(Resource):
             # print(data)
             try:
                 new_product = Products(
-                    user_uuid = data["uuid"], 
-                    product_name = data["product_name"], 
-                    product_price = data["product_price"]
-                    )
+                    user_uuid=data["uuid"],
+                    product_name=data["product_name"],
+                    product_price=data["product_price"]
+                )
 
                 db.session.add(new_product)
                 db.session.commit()
@@ -254,8 +281,8 @@ class ProductRoute(Resource):
         else:
             return {"message": "Something went wrong"}
 
-
     # @marshal_with(get_products_resource_fields)
+
     def delete(self):
         if request.headers['Content-Type'] == "application/json":
 
@@ -264,7 +291,8 @@ class ProductRoute(Resource):
             product_id = data['id']
 
             try:
-                delete_product = Products.query.filter_by(id = product_id).first()
+                delete_product = Products.query.filter_by(
+                    id=product_id).first()
                 if delete_product.user_uuid != uuid:
                     return {"message": "QUERY ERROR"}
                 else:
@@ -277,7 +305,9 @@ class ProductRoute(Resource):
         else:
             return {"message": "Something went wrong"}
 
-## Adding a Appointment
+# Adding a Appointment
+
+
 class AppointmentRoute(Resource):
     @marshal_with(get_appointments_resource_fields)
     def get(self):
@@ -289,21 +319,20 @@ class AppointmentRoute(Resource):
             return appointments
         else:
             abort(400)
-    
-    
+
     def post(self):
         if request.headers['Content-Type'] == "application/json":
             data = request.get_json()
             # print(data['appointment_date'])
             try:
                 new_appointment = Appointments(
-                    user_uuid = data["uuid"], 
-                    appointment_client_id = data["appointment_client_id"],
-                    appointment_date = data["appointment_date"],
-                    appointment_location = data["appointment_location"], 
-                    appointment_client_name = data['appointment_client_name'],
-                    appointment_title = data['appointment_title']
-                    )
+                    user_uuid=data["uuid"],
+                    appointment_client_id=data["appointment_client_id"],
+                    appointment_date=data["appointment_date"],
+                    appointment_location=data["appointment_location"],
+                    appointment_client_name=data['appointment_client_name'],
+                    appointment_title=data['appointment_title']
+                )
 
                 db.session.add(new_appointment)
                 db.session.commit()
@@ -312,16 +341,17 @@ class AppointmentRoute(Resource):
                 return {"message": "ERROR"}
         else:
             return {"message": "Something went wrong"}
-    
+
     def delete(self):
         if request.headers['Content-Type'] == "application/json":
-            
+
             data = request.get_json()
             uuid = data['uuid']
             appointment_id = data['id']
 
             try:
-                delete_appointment = Appointments.query.filter_by(id = appointment_id).first()
+                delete_appointment = Appointments.query.filter_by(
+                    id=appointment_id).first()
                 if delete_appointment.user_uuid != uuid:
                     return {"message": "QUERY ERROR"}
                 else:
@@ -333,6 +363,7 @@ class AppointmentRoute(Resource):
                 return {"message": "Could not delete"}
         else:
             return {"message": "Something went wrong"}
+
 
 api.add_resource(AppUserRoute, f"/{api_endpoint}/user")
 
@@ -347,7 +378,6 @@ api.add_resource(AppointmentRoute, f"/{api_endpoint}/appointment")
 
 # api.add_resource(SignInUser, f"/{api_endpoint}/login")
 # api.add_resource(CreateUser, f"/{api_endpoint}/register")
-
 
 
 if __name__ == '__main__':
