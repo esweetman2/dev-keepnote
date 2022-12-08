@@ -3,8 +3,11 @@ from flask_restful import Resource, Api, marshal_with, abort, reqparse
 # from flask_marshmallow import Marshmallow
 from Resources.resources import *
 from flask_cors import CORS
-from src.Services.loginService import *
+from Helpers.Firebase_Auth import verifyUser
 from Models.models import *
+from Services.ClientService import *
+from Services.NotesService import *
+import json
 from dotenv import load_dotenv
 import os
 
@@ -96,156 +99,6 @@ class AppUserRoute(Resource):
                 return abort(400, error="BAD REQUEST")
         else:
             return abort(400, error="BAD REQUEST")
-
-
-# Adding a Client
-class ClientsRoute(Resource):
-    @marshal_with(get_clients_resource_fields)
-    def get(self):
-        if request.headers['Content-Type'] == "application/json" and request.headers["authorization"]:
-            # data = request.get_json()
-            # print(data)
-            decoded_token = verifyUser(request.headers["Authorization"])
-            # print(decoded_token)
-            # and decoded_token['user_id'] == data['uuid']
-            if type(decoded_token) is dict:
-                # print(decoded_token)
-                uuid = decoded_token['user_id']
-                clients = Clients.query.filter_by(user_uuid=uuid).all()
-                # print(clients)
-                return clients
-            elif type(decoded_token) is str:
-                print("HERE", json.loads(decoded_token))
-                return abort(400, error=json.loads(decoded_token))
-            else:
-                return abort(400, error="BAD REQUEST")
-        else:
-            abort(400)
-
-    @marshal_with(get_clients_resource_fields)
-    def post(self):
-        if request.headers['Content-Type'] == "application/json" and request.headers["Authorization"]:
-            data = request.get_json()
-            # print(data)
-            decoded_token = verifyUser(request.headers["Authorization"])
-            if type(decoded_token) is dict and data['client_name'] and decoded_token['user_id'] == data['uid']:
-                # print(decoded_token)
-                try:
-                    new_client = Clients(
-                        user_uuid=decoded_token['uid'],
-                        client_name=data["client_name"],
-                    )
-                    db.session.add(new_client)
-                    db.session.commit()
-                    return new_client
-                    # return {
-                    #     "success": True,
-                    #     "message":f"Client added {new_client.client_name}"
-                    #     }
-                except Exception as e:
-                    print(e)
-                    return f"error: Counldn't add to DB"
-            elif type(decoded_token) is str:
-                return abort(400, decoded_token)
-            else:
-                return abort(400, error="BAD REQUEST no news")
-        else:
-            return abort(400, error="BAD REQUEST")
-
-
-### INDIVIDUAL CLIENT ####
-# client_put_args = reqparse.RequestParser()
-# client_put_args.add_argument("id", type=int, help="Need an ID")
-
-class Client(Resource):
-    @marshal_with(get_clients_resource_fields)
-    def put(self, id):
-
-        if request.headers['Content-Type'] == "application/json" and request.headers["Authorization"]:
-            data = request.get_json()
-            decoded_token = verifyUser(request.headers["Authorization"])
-            # print(decoded_token)
-
-            if type(decoded_token) is dict and data['update_name'] and decoded_token['user_id'] == data['uid']:
-                
-                try:
-                    updated_client = Clients.query.filter_by(user_uuid=data['uid'], id=id).first()
-                    updated_client.client_name = data['update_name']
-                    db.session.commit()
-                    return updated_client
-                except Exception as e:
-                    # print(e)
-                    return f"error: Counldn't add to DB"
-
-            elif type(decoded_token) is str:
-                return abort(400, error=decoded_token)
-
-            else:
-                return abort(400, error="BAD REQUEST no news")
-        else:
-            # print("abort")
-            return abort(400)
-
-
-    def delete(self, id):
-        print(id)
-        if request.headers['Content-Type'] == "application/json" and request.headers["Authorization"]:
-            data = request.get_json()
-            decoded_token = verifyUser(request.headers["Authorization"])
-            # print(decoded_token)
-
-            if type(decoded_token) is dict and decoded_token['user_id'] == data['uid']:
-                
-                try:
-                    updated_client = Clients.query.filter_by(user_uuid=data['uid'], id=id)
-                    updated_client.delete()
-                    db.session.commit()
-                except Exception as e:
-                    print(e)
-                    return f"error: Counldn't Delete"
-
-            elif type(decoded_token) is str:
-                return abort(400, error=decoded_token)
-
-            else:
-                return abort(400, error="BAD REQUEST no news")
-        else:
-            # print("abort")
-            return abort(400)
-
-        return {"message": "Deleted"}
-
-
-# Notes Route
-class NotesRoute(Resource):
-    @marshal_with(get_notes_resource_fields)
-    def get(self):
-        if request.headers['Content-Type'] == "application/json":
-            data = request.get_json()
-            # print(data)
-            uuid = data['uuid']
-            notes = ClientNotes.query.filter_by(user_uuid=uuid).all()
-            return notes
-        else:
-            abort(400)
-
-    def post(self):
-        if request.headers['Content-Type'] == "application/json":
-            data = request.get_json()
-            # print(data)
-            try:
-                new_note = ClientNotes(
-                    user_uuid=data["uuid"],
-                    client_id=data["client_id"],
-                    notes=data["notes"]
-                )
-                db.session.add(new_note)
-                db.session.commit()
-                return {"message": "Note added!"}
-            except:
-                return {"message": "ERROR"}
-        else:
-            return {"message": "Something went wrong"}
 
 
 # Adding a product
@@ -370,7 +223,7 @@ api.add_resource(AppUserRoute, f"/{api_endpoint}/user")
 api.add_resource(ClientsRoute, f"/{api_endpoint}/clients")
 api.add_resource(Client, f"/{api_endpoint}/client/<int:id>")
 
-api.add_resource(NotesRoute, f"/{api_endpoint}/note")
+api.add_resource(NotesRoute, f"/{api_endpoint}/notes")
 
 api.add_resource(ProductRoute, f"/{api_endpoint}/product")
 
