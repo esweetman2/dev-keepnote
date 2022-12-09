@@ -40,6 +40,7 @@ class ClientsRoute(Resource):
         if request.headers['Content-Type'] == "application/json" and request.headers["Authorization"]:
             data = request.get_json()
             # print(data)
+            if "uid" not in data: return abort(400, error="Your request is missing something")
             decoded_token = verifyUser.verifyUser(request.headers["Authorization"])
             if type(decoded_token) is dict and data['client_name'] and decoded_token['user_id'] == data['uid']:
                 # print(decoded_token)
@@ -51,10 +52,6 @@ class ClientsRoute(Resource):
                     db.session.add(new_client)
                     db.session.commit()
                     return new_client
-                    # return {
-                    #     "success": True,
-                    #     "message":f"Client added {new_client.client_name}"
-                    #     }
                 except Exception as e:
                     print(e)
                     return f"error: Counldn't add to DB"
@@ -67,15 +64,33 @@ class ClientsRoute(Resource):
 
 
 ### INDIVIDUAL CLIENT ####
-# client_put_args = reqparse.RequestParser()
-# client_put_args.add_argument("id", type=int, help="Need an ID")
 
 class Client(Resource):
+    @marshal_with(get_clients_resource_fields)
+    def get(self, id):
+        if request.headers['Content-Type'] == "application/json" and request.headers["authorization"]:
+
+            decoded_token = verifyUser.verifyUser(request.headers["Authorization"])
+            data = request.get_json()
+            if "uid" not in data: return abort(400, error="Your request is missing something")
+
+            if type(decoded_token) is dict and decoded_token['user_id'] == data['uid']:
+
+                client = Clients.query.filter_by(user_uuid=data['uid'], id=id).first()
+                return client
+            elif type(decoded_token) is str:
+                return abort(400, error=json.loads(decoded_token))
+            else:
+                return abort(400, error="Token Error")
+        else:
+            abort(400, error="BAD REQUEST")
+
     @marshal_with(get_clients_resource_fields)
     def put(self, id):
         
         if request.headers['Content-Type'] == "application/json" and request.headers["Authorization"]:
             data = request.get_json()
+            if "uid" not in data: return abort(400, error="Your request is missing something")
             decoded_token = verifyUser.verifyUser(request.headers["Authorization"])
             # print(decoded_token)
 
@@ -101,9 +116,10 @@ class Client(Resource):
 
 
     def delete(self, id):
-        print(id)
+        # print(id)
         if request.headers['Content-Type'] == "application/json" and request.headers["Authorization"]:
             data = request.get_json()
+            if "uid" not in data: return abort(400, error="Your request is missing something")
             # print("HERE", data)
             decoded_token = verifyUser.verifyUser(request.headers["Authorization"])
             # print(decoded_token)
