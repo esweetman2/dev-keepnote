@@ -33,7 +33,7 @@ CORS(app)
 api = Api(app)
 
 
-##### ALL ROUTES
+#### ALL ROUTES
 api.add_resource(AppUserRoute, f"/{api_endpoint}/user")
 
 api.add_resource(ClientsRoute, f"/{api_endpoint}/clients")
