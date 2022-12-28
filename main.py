@@ -13,6 +13,7 @@ from Services.AppointmentsService import *
 import json
 from dotenv import load_dotenv
 import os
+import socket
 
 
 load_dotenv()
@@ -49,8 +50,10 @@ api.add_resource(AppointmentRoute, f"/{api_endpoint}/appointment")
 # api.add_resource(SignInUser, f"/{api_endpoint}/login")
 # api.add_resource(CreateUser, f"/{api_endpoint}/register")
 
+# hostname = socket.gethostname()
+# ip = socket.gethostbyname(hostname)
 
 if __name__ == '__main__':
-    app.run(debug=True, host="192.168.1.165", port="5000")
+    app.run(debug=True, host="0.0.0.0", port="5000")
     # app.run(ssl_context='adhoc', debug=True, host="192.168.1.165", port="5000")
     # app.run(host="192.168.1.165", port="19000", debug=True)
