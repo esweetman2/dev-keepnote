@@ -23,7 +23,7 @@ DB_SERVER = os.getenv("DB_SERVER")
 DB_PORT = os.getenv("DB_PORT")
 DB_DATABASE = os.getenv("DB_DATABASE")
 
-API_URI = os.getnenv("API_URI")
+API_URI = os.getenv("API_URI")
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{DB_USERNAME}:{DB_PASSWORD}@{DB_SERVER}:{DB_PORT}/{DB_DATABASE}"
